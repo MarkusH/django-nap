@@ -160,7 +160,7 @@ class Publisher(JsonMixin, BasePublisher):
     OFFSET_PARAM = 'offset'
     PAGE_PARAM = 'page'
 
-    response_class = http.HttpResponse
+    response_class = http.JsonResponse
 
     # De/Serialising
     # Which content types will we attempt to parse?
@@ -198,21 +198,32 @@ class Publisher(JsonMixin, BasePublisher):
         '''Hook to allow custom sorting of object lists'''
         return object_list
 
+
     # Pagination
-    def get_page(self, object_list):
-        '''Return a paginated object list, along with some metadata'''
+    def paginate_object_list(self, object_list):
+        '''Paginate an object list.
+
+        Should return the page list, as well as dict of meta-data.
+        '''
+        page_size = self.get_page_size()
+        if not page_size:
+            return object_list, {}
+
+    def get_page_size(self):
+        '''Hook to control the pagination page size.'''
         page_size = getattr(self, 'page_size', None)
-        if page_size is None:
-            return {
-                'meta': {},
-                'objects': object_list,
-            }
+        if not page_size:
+            return None
         max_page_size = getattr(self, 'max_page_size', page_size)
         try:
             page_size = int(self.request.GET.get(self.LIMIT_PARAM, page_size))
         except ValueError:
             raise http.NotFound('Invalid page size')
         page_size = max(0, min(page_size, max_page_size))
+
+    def get_page(self, object_list):
+        '''Return a paginated object list, along with some metadata'''
+        page_size = self.get_page_size()
         page_num = 0
         try:
             page_num = int(self.request.GET[self.PAGE_PARAM])
@@ -247,13 +258,13 @@ class Publisher(JsonMixin, BasePublisher):
 
     # Response helpers
 
-    def create_response(self, content, **response_kwargs):
+    def render_to_response(self, content, **response_kwargs):
         '''Return a response, serialising the content'''
         response_class = response_kwargs.pop('response_class', self.response_class)
         response_kwargs.setdefault('content_type', self.CONTENT_TYPES[0])
-        return response_class(self.dumps(content), **response_kwargs)
+        return response_class(content, **response_kwargs)
 
-    def render_single_object(self, obj, serialiser=None, **response_kwargs):
+    def render_object(self, obj, serialiser=None, **response_kwargs):
         '''Helper to return a single object instance serialised.'''
         if serialiser is None:
             serialiser = self.get_serialiser()
@@ -261,7 +272,17 @@ class Publisher(JsonMixin, BasePublisher):
         if serialiser_kwargs is None:
             serialiser_kwargs = self.get_serialiser_kwargs()
         data = serialiser.object_deflate(obj, **serialiser_kwargs)
-        return self.create_response(data, **response_kwargs)
+        return self.render_to_response(data, **response_kwargs)
+
+    def render_object_list(self, objs, serialiser=None, **response_kwargs):
+        '''Helper to return a list of objects serialised.'''
+        if serialiser is None:
+            serliaser = self.get_serialiser()
+        serialiser_kwargs = response_kwargs.pop('serialiser_kwargs', None)
+        if serialiser_kwargs is None:
+            serialiser_kwargs = self.get_serialiser_kwargs()
+        data = serialiser.list_deflate(objs, **serialiser_kwargs)
+        return self.render_to_response(data, **response_kwargs)
 
     # Default handlers
 
@@ -275,7 +296,7 @@ class Publisher(JsonMixin, BasePublisher):
         serialiser = self.get_serialiser()
         serialiser_kwargs = self.get_serialiser_kwargs()
         data['objects'] = serialiser.list_deflate(data['objects'], **serialiser_kwargs)
-        return self.create_response(data)
+        return self.render_to_response(data)
 
     def object_get_default(self, request, object_id, **kwargs):
         '''Default object GET handler -- get object'''

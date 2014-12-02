@@ -1,13 +1,16 @@
 from __future__ import unicode_literals
 
+from nap.exceptions import ValidationError
 from nap import http
+from nap.utils import JsonMixin
 
 
 class JsonResponseMixin(JsonMixin):
     response_class = http.HttpResponse
 
     def render_to_response(self, context, **response_kwargs):
-        response_class = response_kwargs.pop('response_class', self.response_class)
+        response_class = response_kwargs.pop('response_class',
+                                             self.response_class)
 
         content = self.dumps(context)
         response_kwargs.setdefault('content_type', self.CONTENT_TYPES[0])
@@ -45,8 +48,7 @@ class SingleObjectMixin(object):
         serialiser_kwargs = self.get_serialiser_kwargs()
 
         try:
-            self.object = serialiser.object_inflate(data, **kwargs)
+            self.object = serialiser.object_inflate(data, **serialiser_kwargs)
         except ValidationError as ve:
             return self.validate_failed(data, ve)
         return self.validate_passed(self.object, data=data)
-

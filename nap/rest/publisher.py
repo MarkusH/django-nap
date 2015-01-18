@@ -232,11 +232,12 @@ class Publisher(JsonMixin, BasePublisher):
         if not page_size:
             return None
         max_page_size = getattr(self, 'max_page_size', page_size)
+
         try:
             page_size = int(self.request.GET.get(self.LIMIT_PARAM, page_size))
         except ValueError:
             raise http.NotFound('Invalid page size')
-        page_size = max(0, min(page_size, max_page_size))
+        page_size = max(1, min(page_size, max_page_size))
 
     def get_page_number(self, page_size):
         page_num = 0

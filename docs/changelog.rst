@@ -26,6 +26,26 @@ Enhancements:
 + Renamed Publisher.render_single_object to render_object
 + Added Publisher.render_object_list method
 + Decomposed handling of pagination to ease customisation
++ Added DataMapper alternative serialiser module
+
+=======
+v0.14.2
+=======
+
+.. admonition:: WARNING: Removed module
+
+   The module nap.exceptions has been completely removed.
+
+Enhancements:
+
++ Switched custom ValidationError / ValidationErrors to django's ValidationError
+
+v0.14.1.1
+=========
+
+Bug Fixes:
+
++ Add required `name` attribute to AppConfig [thanks bobobo1618]
 
 v0.14.1
 =======
@@ -46,6 +66,7 @@ Bug Fixes:
 + Raise a 404 on invalid page_size value
 + Validate the data we got in RPC View is passable as \**kwargs
 + ISO_8859_1 isn't defined in older Django versions
++ Emulate django template lookups in digattr by ignoring callables flagged 'do_not_call_in_templates'
 
 v0.14.0
 =======
